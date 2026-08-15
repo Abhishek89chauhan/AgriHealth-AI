@@ -7,7 +7,7 @@ AI-powered web application for detecting plant diseases across 10 crops using de
 
 ## 🌐 Live Application
 
-- **Frontend**: [https://plant-disease-frontend-ibpp.onrender.com](https://plant-disease-frontend-i7em.onrender.com)
+- **Frontend**: [https://plant-disease-frontend-ibpp.onrender.com](https://plant-disease-frontend-wi71.onrender.com)
 
 ## ✨ Features
 
