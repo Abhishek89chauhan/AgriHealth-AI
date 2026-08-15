@@ -28,6 +28,17 @@ app.use(
   })
 );
 
+app.get('/', (_req, res) => {
+  res.json({
+    status: 'ok',
+    message: 'Plant Disease Detection API',
+    endpoints: {
+      health: 'GET /ping',
+      predict: 'POST /predict (multipart: file, crop)',
+    },
+  });
+});
+
 app.get('/ping', (_req, res) => {
   res.type('text/plain').send('Hello, I am alive');
 });
