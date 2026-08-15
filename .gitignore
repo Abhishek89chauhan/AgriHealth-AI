@@ -52,6 +52,9 @@ Thumbs.db
 # Environment variables
 .env
 
+# Converted intermediate SavedModels (TF.js under */tfjs is kept)
+**/inference_saved/
+
 # Logs
 *.log
 logs/

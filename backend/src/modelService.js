@@ -1,30 +1,8 @@
 const fs = require('fs');
 const path = require('path');
+const tf = require('@tensorflow/tfjs');
 const { CROP_CONFIG } = require('./cropConfig');
 
-/**
- * Prefer @tensorflow/tfjs-node (SavedModel support) when native bindings exist
- * (Linux/Render). Fall back to pure @tensorflow/tfjs + Layers model.json.
- */
-function createTfRuntime() {
-  try {
-    // eslint-disable-next-line import/no-extraneous-dependencies, global-require
-    const tfNode = require('@tensorflow/tfjs-node');
-    if (tfNode?.node?.loadSavedModel) {
-      console.log('Using @tensorflow/tfjs-node (SavedModel)');
-      return { tf: tfNode, supportsSavedModel: true };
-    }
-  } catch (err) {
-    console.warn('tfjs-node unavailable, using pure tfjs:', err.message);
-  }
-
-  // eslint-disable-next-line global-require
-  const tf = require('@tensorflow/tfjs');
-  console.log('Using @tensorflow/tfjs (Layers model.json only)');
-  return { tf, supportsSavedModel: false };
-}
-
-const { tf, supportsSavedModel } = createTfRuntime();
 const loadedModels = new Map();
 let backendReady;
 
@@ -44,6 +22,53 @@ function pathExists(p) {
   }
 }
 
+/**
+ * Load TF.js Graph/Layers models from disk without fetch/file://
+ * (Node's fetch does not support local files).
+ */
+function fileSystemHandler(modelJsonPath) {
+  const modelDir = path.dirname(modelJsonPath);
+
+  return {
+    async load() {
+      const modelConfig = JSON.parse(fs.readFileSync(modelJsonPath, 'utf8'));
+      const weightSpecs = [];
+      const buffers = [];
+
+      for (const group of modelConfig.weightsManifest || []) {
+        for (const spec of group.weights) {
+          weightSpecs.push(spec);
+        }
+        for (const weightPath of group.paths) {
+          buffers.push(fs.readFileSync(path.join(modelDir, weightPath)));
+        }
+      }
+
+      const weightData = Buffer.concat(buffers).buffer;
+
+      return {
+        modelTopology: modelConfig.modelTopology,
+        weightSpecs,
+        weightData,
+        format: modelConfig.format,
+        generatedBy: modelConfig.generatedBy,
+        convertedBy: modelConfig.convertedBy,
+        signature: modelConfig.signature,
+        userDefinedMetadata: modelConfig.userDefinedMetadata,
+      };
+    },
+  };
+}
+
+function isGraphModelJson(modelJsonPath) {
+  try {
+    const parsed = JSON.parse(fs.readFileSync(modelJsonPath, 'utf8'));
+    return parsed.format === 'graph-model' || Array.isArray(parsed.modelTopology?.node);
+  } catch {
+    return false;
+  }
+}
+
 async function loadModel(cropKey) {
   await ensureBackend();
 
@@ -57,34 +82,27 @@ async function loadModel(cropKey) {
   }
 
   const modelDir = config.path;
-  const tfjsCandidates = [
+  const candidates = [
     path.join(modelDir, 'tfjs', 'model.json'),
     path.join(modelDir, 'model.json'),
   ];
-  const layersJson = tfjsCandidates.find((p) => pathExists(p));
+  const modelJson = candidates.find((p) => pathExists(p));
 
-  let model;
-  let type;
-
-  if (layersJson) {
-    const fileUrl = `file://${layersJson.replace(/\\/g, '/')}`;
-    model = await tf.loadLayersModel(fileUrl);
-    type = 'layers';
-  } else if (supportsSavedModel && pathExists(path.join(modelDir, 'saved_model.pb'))) {
-    model = await tf.node.loadSavedModel(modelDir);
-    type = 'savedmodel';
-  } else if (supportsSavedModel && pathExists(modelDir)) {
-    model = await tf.node.loadSavedModel(modelDir);
-    type = 'savedmodel';
-  } else {
+  if (!modelJson) {
     throw new Error(
-      `No usable model for "${cropKey}" at ${modelDir}. ` +
-        'On Render/Linux, SavedModel folders work with tfjs-node. ' +
-        'On Windows without tfjs-node, add TF.js files via: python backend/scripts/convert_models.py'
+      `TF.js model not found for "${cropKey}" at ${path.join(modelDir, 'tfjs', 'model.json')}. ` +
+        'Run: python backend/scripts/convert_models.py'
     );
   }
 
-  const entry = { model, type, classes: config.classes };
+  const handler = fileSystemHandler(modelJson);
+  const graph = isGraphModelJson(modelJson);
+  const model = graph
+    ? await tf.loadGraphModel(handler)
+    : await tf.loadLayersModel(handler);
+
+  console.log(`Loaded ${cropKey} (${graph ? 'graph' : 'layers'}) from ${modelJson}`);
+  const entry = { model, graph, classes: config.classes };
   loadedModels.set(cropKey, entry);
   return entry;
 }
