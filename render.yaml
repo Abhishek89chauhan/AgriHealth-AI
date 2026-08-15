@@ -12,15 +12,13 @@ services:
       - key: NODE_ENV
         value: production
 
-  # Frontend — React static site
+  # Frontend — React static site (no plan field; static sites don't use web free plan)
   - type: web
     name: plant-disease-frontend
     runtime: static
-    plan: free
     buildCommand: cd frontend && npm install && npm run build
     staticPublishPath: frontend/build
     envVars:
-      # Injected at build time from the backend service URL
       - key: REACT_APP_API_URL
         fromService:
           name: plant-disease-backend
