@@ -86,8 +86,12 @@ PlantDiseaseDetection/
 │   ├── 10.keras
 │   └── 10.h5
 ├── backend/
-│   ├── main.py         # FastAPI backend server
-│   └── requirements.txt
+│   ├── package.json    # Express + TensorFlow.js dependencies
+│   └── src/
+│       ├── index.js        # Express API server
+│       ├── cropConfig.js   # Crop → model paths & class labels
+│       ├── imageService.js # Image preprocessing
+│       └── modelService.js # Model load & inference
 ├── frontend/
 │   ├── public/
 │   │   └── index.html
@@ -107,10 +111,10 @@ PlantDiseaseDetection/
 
 ### Prerequisites
 
-- Python 3.13+
-- Node.js 16+
+- Node.js 18+
 - npm or yarn
 - Git
+- Crop models as TensorFlow **SavedModel** folders (or TF.js `model.json`) under `models/` … `models9/`
 
 ### Local Development Setup
 
@@ -123,15 +127,18 @@ PlantDiseaseDetection/
 
 2. **Install dependencies:**
    ```powershell
-   pip install -r requirements.txt
+   npm install
    ```
 
-3. **Start the FastAPI server:**
+3. **Start the Express server:**
    ```powershell
-   python main.py
+   npm start
    ```
    
    Backend runs on `http://localhost:8000`
+
+> **Models on Render:** Linux installs `@tensorflow/tfjs-node` and loads your existing **SavedModel** folders (`models/1`, …) — no conversion required for deploy.  
+> **Local Windows:** if `tfjs-node` fails to install, convert once with `python backend/scripts/convert_models.py` (needs a compatible Python/tensorflowjs setup) so `model.json` exists under each model folder.
 
 #### Frontend Setup
 
@@ -238,23 +245,23 @@ curl -X POST "" \
 ## 📊 Model Information
 
 - **Architecture**: CNN (Convolutional Neural Network)
-- **Framework**: TensorFlow 2.20.0 / Keras
+- **Framework**: TensorFlow.js (Node) / original models trained with TensorFlow/Keras
 - **Input Size**: 256x256 pixels (RGB)
 - **Image Preprocessing**: 
   - EXIF orientation correction
   - RGB conversion
-  - High-quality resizing (LANCZOS)
+  - Bilinear resize to 256×256 (float32, 0–255 scale)
 - **Training Dataset**: PlantVillage Dataset + Custom Datasets
 - **Total Models**: 10 (one per crop type)
 
 ## 🎨 Technologies Used
 
 ### Backend
-- **FastAPI** - Modern Python web framework
-- **TensorFlow 2.20.0** - Deep learning inference
-- **Pillow** - Image processing
-- **Uvicorn** - ASGI server
-- **NumPy** - Numerical operations
+- **Express** - Node.js web framework
+- **@tensorflow/tfjs-node** - Deep learning inference
+- **Sharp** - Image processing
+- **Multer** - Multipart file uploads
+- **CORS** - Cross-origin support
 
 ### Frontend
 - **React 18.2.0** - UI framework
@@ -277,9 +284,8 @@ curl -X POST "" \
 
 ### Backend (Web Service)
 - **Platform**: Render Web Service
-- **Build Command**: `pip install -r requirements.txt`
-- **Start Command**: `uvicorn main:app --host 0.0.0.0 --port 10000`
-- **Root Directory**: `backend`
+- **Build Command**: `cd backend && npm install`
+- **Start Command**: `cd backend && npm start`
 - **Auto-Deploy**: Enabled (on push to main)
 
 ### Important Notes
@@ -298,20 +304,17 @@ REACT_APP_API_URL=http://localhost:8000
 ```
 
 #### Backend
-No environment variables required. Models are loaded from relative paths.
+`PORT` is optional (defaults to `8000`). Models are loaded from relative paths under the project root.
 
 ### CORS Configuration
-Backend allows all origins for production deployment:
-```python
-allow_origins=["*"]
-```
+Backend allows all origins for production deployment via the `cors` middleware.
 
 ## 🐛 Troubleshooting
 
 ### Backend Issues
-- **TensorFlow errors**: Ensure Python 3.13+ and compatible TensorFlow version
-- **Model not found**: Check model paths relative to project root
-- **CUDA errors**: Expected on CPU-only systems, will fall back to CPU
+- **TensorFlow / native binding errors**: Use Node 18+ and run `npm install` inside `backend`
+- **Model not found**: Ensure SavedModel folders exist (`models/1`, `models1/2`, …) or place a TF.js `model.json` in those folders. `.keras` / `.h5` alone will not load in Node
+- **CUDA errors**: Expected on CPU-only systems; `tfjs-node` runs on CPU
 
 ### Frontend Issues
 - **Cannot connect to backend**: Check if backend is running and URL is correct
@@ -336,7 +339,7 @@ Contributions, issues, and feature requests are welcome!
 
 - **PlantVillage Dataset** - Training data for all crop disease models
 - **TensorFlow Team** - Deep learning framework
-- **FastAPI Community** - Modern web framework
+- **Express / Node.js Community** - Backend framework
 - **React Community** - Frontend framework
 - **Render** - Deployment platform
 

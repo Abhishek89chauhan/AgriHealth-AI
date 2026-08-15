@@ -1,17 +1,28 @@
 services:
-  # Backend Service
+  # Backend — Node/Express API (repo root so models/ is available)
   - type: web
     name: plant-disease-backend
-    env: python
-    buildCommand: pip install -r backend/requirements.txt
-    startCommand: cd backend && uvicorn main:app --host 0.0.0.0 --port $PORT
+    runtime: node
+    plan: free
+    buildCommand: cd backend && npm install
+    startCommand: cd backend && npm start
     envVars:
-      - key: PYTHON_VERSION
-        value: 3.11.0
+      - key: NODE_VERSION
+        value: "20.18.0"
+      - key: NODE_ENV
+        value: production
 
-  # Frontend Service
+  # Frontend — React static site
   - type: web
     name: plant-disease-frontend
-    env: static
+    runtime: static
+    plan: free
     buildCommand: cd frontend && npm install && npm run build
     staticPublishPath: frontend/build
+    envVars:
+      # Injected at build time from the backend service URL
+      - key: REACT_APP_API_URL
+        fromService:
+          name: plant-disease-backend
+          type: web
+          envVarKey: RENDER_EXTERNAL_URL
