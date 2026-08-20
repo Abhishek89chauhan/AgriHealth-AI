@@ -5,9 +5,6 @@
 
 AI-powered web application for detecting plant diseases across 10 crops using deep learning CNN models trained on TensorFlow. Deployed and accessible 24/7.
 
-## 🌐 Live Application
-
-- **Frontend**: [https://plant-disease-frontend-ibpp.onrender.com](https://plant-disease-frontend-wi71.onrender.com)
 
 ## ✨ Features
 
