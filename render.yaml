@@ -1,7 +1,7 @@
 services:
   # Backend — Node/Express API (repo root so models/ is available)
   - type: web
-    name: plantgaurd-ai
+    name: plantgaurd-backend
     runtime: node
     plan: free
     buildCommand: cd backend && npm install
@@ -14,13 +14,13 @@ services:
 
   # Frontend — React static site (no plan field; static sites don't use web free plan)
   - type: web
-    name: plantgaurd-ai
+    name: plantgaurd-frontend
     runtime: static
     buildCommand: cd frontend && npm install && npm run build
     staticPublishPath: frontend/build
     envVars:
       - key: REACT_APP_API_URL
         fromService:
-          name: plant-disease-backend
+          name: plantgaurd-backend
           type: web
           envVarKey: RENDER_EXTERNAL_URL
