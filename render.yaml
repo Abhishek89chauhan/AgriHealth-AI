@@ -1,7 +1,7 @@
 services:
   # Backend — Node/Express API (repo root so models/ is available)
   - type: web
-    name: plant-disease-backend
+    name: AgriHealth-AI
     runtime: node
     plan: free
     buildCommand: cd backend && npm install
@@ -14,7 +14,7 @@ services:
 
   # Frontend — React static site (no plan field; static sites don't use web free plan)
   - type: web
-    name: plant-disease-frontend
+    name: AgriHealth-AI
     runtime: static
     buildCommand: cd frontend && npm install && npm run build
     staticPublishPath: frontend/build
